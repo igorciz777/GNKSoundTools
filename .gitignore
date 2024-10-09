@@ -1,0 +1,7 @@
+*.bin
+*.bd
+*.hd
+*.exe
+*.out
+out
+.vscode
