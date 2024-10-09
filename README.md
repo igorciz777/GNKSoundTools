@@ -2,7 +2,7 @@
 
 Sound modding tools for PS2 Genki games
 
-[How to use](https://github.com/igorciz777/GNKSoundTools/wiki)
+[How to use](https://github.com/igorciz777/GNKSoundTools/wiki/How-to-use)
 
 ***
 Run
