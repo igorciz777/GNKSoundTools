@@ -209,10 +209,41 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
     printf("Done\n");
 }
 
+void list_music(const char *music_info)
+{
+    music_track *tracks;
+    uint32_t num_tracks; // @ 0x08 in music_info
+    FILE *info_file = fopen(music_info, "rb");
+    if(!info_file)
+    {
+        printf("Error: Could not open %s\n", music_info);
+        return;
+    }
+
+    fseek(info_file, 0x08, SEEK_SET);
+    fread(&num_tracks, 4, 1, info_file);
+    tracks = malloc(num_tracks * sizeof(music_track));
+    fseek(info_file, 0x10, SEEK_SET);
+    fread(tracks, sizeof(music_track), num_tracks, info_file);
+    fclose(info_file);
+    printf("Found %d tracks\n", num_tracks);
+
+
+    for(int i = 0; i < num_tracks; i++)
+    {
+        printf("%04d: %s\n", i, tracks[i].name);
+    }
+
+    free(tracks);
+
+    printf("Done\n");
+}
+
 void usage(const char *progname)
 {
     printf("\nUsage: %s [mode] [log]\n\n", progname);
     printf("  Modes:\n");
+    printf("    -l  <music info file>                                  : Lists all found music tracks\n");
     printf("    -ev <music info file> <music .bd file> <output folder> : Extracts all music into .VAG files (for playback)\n");
     printf("    -er <music info file> <music .bd file> <output folder> : Extracts all music into RAW files\n");
     printf("    -i  <music info file> <music .bd file> <input folder>  : Injects RAW files into the music .bd file\n");
@@ -254,6 +285,14 @@ int main(int argc, char const *argv[])
                 return 1;
             }
             inject_music(argv[2], argv[3], argv[4]);
+            break;
+        case 'l':
+            if(argc < 3)
+            {
+                usage(argv[0]);
+                return 1;
+            }
+            list_music(argv[2]);
             break;
         default:
             usage(argv[0]);
