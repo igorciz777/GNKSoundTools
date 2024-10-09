@@ -1,5 +1,5 @@
 #include <dirent.h>
-#include "include/txr_music.h"
+#include "include/gnk_sound.h"
 
 void write_vag_header(FILE *out, uint32_t sample_rate, uint32_t size, uint32_t interleave, uint8_t channels)
 {
