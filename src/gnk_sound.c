@@ -28,7 +28,11 @@ void extract_music(const char *music_info, const char *music_bd, const char *out
         return;
     }
 
+#ifdef _WIN32
+    mkdir(output_folder);
+#else
     mkdir(output_folder, 0700);
+#endif
 
     printf("Extracting music from %s\n", music_bd);
 
@@ -93,7 +97,7 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
 
     fseek(info_file, 0x08, SEEK_SET);
     fread(&num_tracks, 4, 1, info_file);
-    tracks = malloc(num_tracks * sizeof(music_track));
+    tracks = calloc(num_tracks, sizeof(music_track));
     fseek(info_file, 0x10, SEEK_SET);
     fread(tracks, sizeof(music_track), num_tracks, info_file);
     
@@ -112,6 +116,13 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
     if (dir == NULL)
     {
         printf("Error: Could not open %s\n", input_folder);
+        return;
+    }
+
+    FILE *new_bd_file = fopen("new_music.bd", "wb");
+    if(!new_bd_file)
+    {
+        printf("Error: Could not create temp music file\n");
         return;
     }
 
@@ -143,6 +154,12 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
     {
         if (to_import[i] == 0)
         {
+            char *unchanged = malloc(tracks[i].size);
+            fread(unchanged, 1, tracks[i].size, bd_file);
+            fwrite(unchanged, 1, tracks[i].size, new_bd_file);
+            free(unchanged);
+            continue;
+        }else{
             fseek(bd_file, tracks[i].size, SEEK_CUR);
         }
         printf("Importing %s\n", tracks[i].name);
@@ -156,13 +173,21 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
             continue;
         }
 
+        char header_check[16];
+        fread(header_check, 1, 16, in);
+        if(memcmp(header_check, BD, 16) != 0)
+        {
+            //add header data, MFAudio generates raw files without it
+            fwrite(BD, 1, 16, new_bd_file);
+        }
+
         fseek(in, 0, SEEK_END);
         int size = ftell(in);
         fseek(in, 0, SEEK_SET);
 
         char *data = malloc(size);
         fread(data, 1, size, in);
-        fwrite(data, 1, size, bd_file);
+        fwrite(data, 1, size, new_bd_file);
         fseek(info_file, 0x10 + i * sizeof(music_track), SEEK_SET);
         fseek(info_file, 12, SEEK_CUR);
         fwrite(&size, 4, 1, info_file);
@@ -171,9 +196,16 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
     }
 
     fclose(bd_file);
+    fclose(new_bd_file);
     fclose(info_file);
     free(tracks);
     free(to_import);
+
+    remove(music_bd);
+    rename("new_music.bd", music_bd);
+
+    closedir(dir);
+
     printf("Done\n");
 }
 
