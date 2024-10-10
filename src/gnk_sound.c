@@ -64,10 +64,10 @@ void extract_music(const char *music_info, const char *music_bd, const char *out
             continue;
         }
 
-        char *data = malloc(tracks[i].size);
-        fread(data, 1, tracks[i].size, bd_file);
-        if(!raw) write_vag_header(out, tracks[i].sample_rate, tracks[i].size, 1000,2);
-        fwrite(data, 1, tracks[i].size, out);
+        char *data = malloc(tracks[i].padded_size);
+        fread(data, 1, tracks[i].padded_size, bd_file);
+        if(!raw) write_vag_header(out, tracks[i].sample_rate, tracks[i].padded_size, 1000,2);
+        fwrite(data, 1, tracks[i].padded_size, out);
         fclose(out);
         free(data);
     }
@@ -154,13 +154,13 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
     {
         if (to_import[i] == 0)
         {
-            char *unchanged = malloc(tracks[i].size);
-            fread(unchanged, 1, tracks[i].size, bd_file);
-            fwrite(unchanged, 1, tracks[i].size, new_bd_file);
+            char *unchanged = malloc(tracks[i].padded_size);
+            fread(unchanged, 1, tracks[i].padded_size, bd_file);
+            fwrite(unchanged, 1, tracks[i].padded_size, new_bd_file);
             free(unchanged);
             continue;
         }else{
-            fseek(bd_file, tracks[i].size, SEEK_CUR);
+            fseek(bd_file, tracks[i].padded_size, SEEK_CUR);
         }
         printf("Importing %s\n", tracks[i].name);
 
@@ -182,15 +182,20 @@ void inject_music(const char *music_info, const char *music_bd, const char *inpu
         }
 
         fseek(in, 0, SEEK_END);
-        int size = ftell(in);
+        uint32_t bgm_size = ftell(in);
         fseek(in, 0, SEEK_SET);
 
-        char *data = malloc(size);
-        fread(data, 1, size, in);
-        fwrite(data, 1, size, new_bd_file);
+        uint32_t block_size = 0x1000;
+
+        uint32_t padded_size = (1 + (bgm_size / block_size)) * block_size; 
+
+        char *data = calloc(padded_size, 1);
+        fread(data, 1, bgm_size, in);
+        fwrite(data, 1, padded_size, new_bd_file);
         fseek(info_file, 0x10 + i * sizeof(music_track), SEEK_SET);
-        fseek(info_file, 12, SEEK_CUR);
-        fwrite(&size, 4, 1, info_file);
+        fseek(info_file, 8, SEEK_CUR);
+        fwrite(&bgm_size, 4, 1, info_file);
+        fwrite(&padded_size, 4, 1, info_file);
         free(data);
         fclose(in);
     }

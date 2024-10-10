@@ -25,3 +25,8 @@ gcc -Wall src/gnk_sound.c -o gnk_sound
 | Tokyo Xtreme Racer 3                            | SLUS 20831 |     44100           |   1000 Bytes              |   `00000000.bin`          |  `00000001.bd`            |
 | Racing Battle: C1 Grand Prix                    | SLPM 65897 |     44100           |   1000 Bytes              |  `00005794.bin`           |  `00005795.bd`            |
 | Tokyo Xtreme Racer DRIFT 2                      | SLUS 21394 |     44100/48000     |   1000 Bytes/2000 Bytes   |  `00003026.bin`           |  `00003027.bd`            |
+
+## Current issues
+- Music not looping
+- Sometimes imported music refuses to play
+- Sound effects extraction and insertion not implemented

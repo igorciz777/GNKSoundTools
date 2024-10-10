@@ -7,8 +7,8 @@
 typedef struct{
     uint32_t type; //?
     uint32_t sample_rate;
-    uint32_t unknown;
-    uint32_t size;
+    uint32_t track_size;
+    uint32_t padded_size;
     char name[0x40];
 } music_track;
 
