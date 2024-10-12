@@ -13,6 +13,17 @@ typedef struct{
 } music_track;
 
 typedef struct{
+    uint32_t header;
+    uint32_t version;
+    uint32_t interleave;
+    uint32_t size;
+    uint32_t sample_rate;
+    char padding[0x0a];
+    uint8_t channels;
+    char padding2[0x11];
+} VAGp;
+
+typedef struct{
     char SCEIVers_header[0x8];
     uint32_t SCEIVers_size;
     uint32_t SCEIVers_version;

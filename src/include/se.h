@@ -1,4 +1,4 @@
-void extract_sounds(const char *hd_info, const char *bd_data, const char *output_folder, int raw)
+void extract_sounds(const char *hd_info, const char *bd_data, const char *output_folder)
 {
     SCEIVers vers;
     SCEIHead head;
@@ -57,7 +57,7 @@ void extract_sounds(const char *hd_info, const char *bd_data, const char *output
     for(int i = 0; i <= vagi.data_count; i++)
     {
         char *filename = malloc(strlen(output_folder) + 12);
-        sprintf(filename, "%s/%04d.%s", output_folder, i, raw ? "RAW" : "VAG");
+        sprintf(filename, "%s/%04d.%s", output_folder, i, "VAG");
         FILE *out = fopen(filename, "wb");
         if(!out)
         {
@@ -70,7 +70,7 @@ void extract_sounds(const char *hd_info, const char *bd_data, const char *output
         char *data = malloc(size);
         fseek(bd_file, vagi_data[i].start_offset, SEEK_SET);
         fread(data, 1, size, bd_file);
-        if(!raw) write_vagp_header(out, vagi_data[i].sample_rate, size);
+        write_vagp_header(out, vagi_data[i].sample_rate, size);
         fwrite(data, 1, size, out);
         fclose(out);
         free(data);
@@ -192,37 +192,31 @@ void import_sounds(const char *hd_info, const char *bd_data, const char *input_f
         printf("Importing %04d\n", i);
 
         char *filename = malloc(strlen(input_folder) + 12);
-        sprintf(filename, "%s/%04d.RAW", input_folder, i);
+        sprintf(filename, "%s/%04d.VAG", input_folder, i);
         FILE *in = fopen(filename, "rb");
         if(!in)
         {
             printf("Error: Could not open %s for reading\n", filename);
             continue;
         }
-
-        fseek(in, 0, SEEK_END);
-        size = ftell(in);
         fseek(in, 0, SEEK_SET);
 
-        char header_check[16];
-        fread(header_check, 1, 16, in);
-        if(memcmp(header_check, BD, 16) != 0)
-        {
-            //add header data, MFAudio generates raw files without it
-            fwrite(BD, 1, 16, new_bd_file);
-            size += 16;
-        }
-        fseek(in, 0, SEEK_SET);
+        VAGp vagp;
+        fread(&vagp, sizeof(VAGp), 1, in);
+        vagp.size = swap_uint32(vagp.size);
+        vagp.sample_rate = swap_uint32(vagp.sample_rate);
+
+        size = vagp.size;
 
         uint32_t block_size = 0x10;
-
-        uint32_t padded_size = (1 + (size / block_size)) * block_size; 
+        uint32_t padded_size = (1 + (size / block_size)) * block_size;
 
         char *data = calloc(padded_size, 1);
         fread(data, 1, size, in);
         fwrite(data, 1, padded_size, new_bd_file);
         fseek(hd_file, vagi_offsets[i] + head.SCEIVagi_offset, SEEK_SET);
         fwrite(&current_bd_offset, 4, 1, hd_file);
+        fwrite(&vagp.sample_rate, 2, 1, hd_file);
         fclose(in);
         free(data);
     }

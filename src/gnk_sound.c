@@ -9,15 +9,14 @@ void usage(const char *progname)
     printf("  Modes:\n\n");
     printf("  BGM:\n");
     printf("    -ml <bgm info file>                                : Lists all found music tracks\n");
-    printf("    -mv <bgm info file> <bgm .bd file> <output folder> : Extracts all music into .VAG files (for playback)\n");
+    printf("    -mv <bgm info file> <bgm .bd file> <output folder> : Extracts all music into VAGi files (for playback)\n");
     printf("    -mr <bgm info file> <bgm .bd file> <output folder> : Extracts all music into RAW files\n");
-    printf("    -mi <bgm info file> <bgm .bd file> <input folder>  : Injects RAW files into the music .bd file\n");
+    printf("    -mi <bgm info file> <bgm .bd file> <input folder>  : Imports RAW files into the music .bd file\n");
     printf("\n");
     printf("  Sound Effects:\n");
-    printf("    -sl <hd info file>                                 : Lists all found sound effects\n");
-    printf("    -sv <hd info file> <bd data file> <output folder>  : Extracts all sound effects into .VAG files (for playback)\n");
-    printf("    -sr <hd info file> <bd data file> <output folder>  : Extracts all sound effects into RAW files\n");
-    printf("    -si <hd info file> <bd data file> <input folder>   : Injects RAW files into the sound effects .bd file\n");
+    printf("    -sl <hd info file>                                 : Lists all sound effects found in the hd file\n");
+    printf("    -sv <hd info file> <bd data file> <output folder>  : Extracts all sounds from the hd/bd soundbank into VAGp format\n");
+    printf("    -si <hd info file> <bd data file> <input folder>   : Imports VAGp files into the hd/bd soundbank\n");
     printf("\n");
 }
 
@@ -59,11 +58,7 @@ int main(int argc, char const *argv[])
             {
                 case 'v':
                     if(argc < 5){usage(argv[0]);return 1;}
-                    extract_sounds(argv[2], argv[3], argv[4],0);
-                    break;
-                case 'r':
-                    if(argc < 5){usage(argv[0]);return 1;}
-                    extract_sounds(argv[2], argv[3], argv[4],1);
+                    extract_sounds(argv[2], argv[3], argv[4]);
                     break;
                 case 'i':
                     if(argc < 5){usage(argv[0]);return 1;}
