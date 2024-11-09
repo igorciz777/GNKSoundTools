@@ -1,9 +1,19 @@
+uint32_t get_interleave(char* adpcm_data, uint32_t adpcm_data_size){
+    uint32_t interleave = 0;
+    for(int i = 0x10; i < adpcm_data_size; i+=0x10){
+        if(memcmp(adpcm_data + i, BD, 16) == 0){
+            interleave = i;
+            break;
+        }
+    }
+    return interleave;
+}
 
-
-void extract_music(const char *music_info, const char *music_bd, const char *output_folder, int raw)
+void extract_music(const char *music_info, const char *music_bd, const char *output_folder)
 {
     music_track *tracks;
     uint32_t num_tracks; // @ 0x08 in music_info
+    uint32_t interleave;
     FILE *info_file = fopen(music_info, "rb");
     if(!info_file)
     {
@@ -39,7 +49,7 @@ void extract_music(const char *music_info, const char *music_bd, const char *out
     for(int i = 0; i < num_tracks; i++)
     {
         char *filename = malloc(strlen(output_folder) + strlen(tracks[i].name) + 12);
-        sprintf(filename, "%s/%04d_%s.%s",output_folder, i, tracks[i].name, raw ? "RAW" : "VAG");
+        sprintf(filename, "%s/%04d_%s.%s",output_folder, i, tracks[i].name, "ADS");
         FILE *out = fopen(filename, "wb");
         if(!out)
         {
@@ -49,7 +59,8 @@ void extract_music(const char *music_info, const char *music_bd, const char *out
 
         char *data = malloc(tracks[i].padded_size);
         fread(data, 1, tracks[i].padded_size, bd_file);
-        if(!raw) write_vagi_header(out, tracks[i].sample_rate, tracks[i].padded_size, 1000,2);
+        interleave = get_interleave(data, tracks[i].padded_size);
+        write_ads_header(out, tracks[i].sample_rate, tracks[i].padded_size, interleave, 2);
         fwrite(data, 1, tracks[i].padded_size, out);
         fclose(out);
         free(data);

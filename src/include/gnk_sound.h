@@ -24,6 +24,21 @@ typedef struct{
 } VAGp;
 
 typedef struct{
+    //sshd
+    uint32_t sshd_header;
+    uint32_t sshd_header_size;
+    uint32_t data_type;
+    uint32_t sample_rate;
+    uint32_t channels;
+    uint32_t interleave;
+    uint64_t ff_footer;
+
+    //ssbd
+    uint32_t ssbd_header;
+    uint32_t adpcm_size;
+} ADS;
+
+typedef struct{
     char SCEIVers_header[0x8];
     uint32_t SCEIVers_size;
     uint32_t SCEIVers_version;
@@ -53,10 +68,13 @@ typedef struct{
     uint32_t data_count;
 } SCEIVagi;
 
-static const unsigned char VAGi_HEADER[] = { //VAGi header for 2channel interleaved stereo
-    0x56, 0x41, 0x47, 0x69, 0x00, 0x00, 0x00, 0x20
+static const unsigned char SShd_HEADER[] = { //used in ADS
+    0x53, 0x53, 0x68, 0x64
 };
-static const unsigned char VAGp_HEADER[] = { //VAGi header for 2channel interleaved stereo
+static const unsigned char SSbd_HEADER[] = { //used in ADS
+    0x53, 0x53, 0x62, 0x64
+};
+static const unsigned char VAGp_HEADER[] = { //VAGp mono header
     0x56, 0x41, 0x47, 0x70, 0x00, 0x00, 0x00, 0x20
 };
 static const unsigned char BD[16] = {
@@ -72,20 +90,19 @@ uint32_t swap_uint32(uint32_t val)
     return (val << 16) | (val >> 16);
 }
 
-void write_vagi_header(FILE *out, uint32_t sample_rate, uint32_t size, uint32_t interleave, uint8_t channels)
+void write_ads_header(FILE *out, uint32_t sample_rate, uint32_t size, uint32_t interleave, uint8_t channels)
 {
-    char *padding;
-    padding = calloc(0x40, 1);
-    fwrite(VAGi_HEADER, 1, sizeof(VAGi_HEADER), out);
-    fwrite(&interleave, 4, 1, out);
-    size = swap_uint32(size);
-    sample_rate = swap_uint32(sample_rate);
-    fwrite(&size, 4, 1, out);
-    fwrite(&sample_rate, 4, 1, out);
-    fwrite(padding, 1, 0x0a, out);
-    fwrite(&channels, 1, 1, out);
-    fwrite(padding, 1, 0x11, out);
-    free(padding);
+    ADS ads;
+    ads.sshd_header = *(uint32_t *)SShd_HEADER;
+    ads.sshd_header_size = 0x18;
+    ads.data_type = 0x10;
+    ads.sample_rate = sample_rate;
+    ads.channels = channels;
+    ads.interleave = interleave;
+    ads.ff_footer = 0xffffffffffffffff;
+    ads.ssbd_header = *(uint32_t *)SSbd_HEADER;
+    ads.adpcm_size = swap_uint32(size);
+    fwrite(&ads, sizeof(ADS), 1, out);
 }
 
 void write_vagp_header(FILE *out, uint32_t sample_rate, uint32_t size)
