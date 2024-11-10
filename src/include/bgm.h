@@ -6,6 +6,9 @@ uint32_t get_interleave(char* adpcm_data, uint32_t adpcm_data_size){
             break;
         }
     }
+    if(interleave == 0 || interleave > 0x18000){
+        interleave = 0x1000;
+    }
     return interleave;
 }
 
@@ -158,39 +161,77 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
         }
         printf("Importing %s\n", tracks[i].name);
 
+        int is_vagi = 0;
+        int add_header = 0;
+
         char *filename = malloc(strlen(input_folder) + strlen(tracks[i].name) + 12);
-        sprintf(filename, "%s/%04d_%s.RAW",input_folder, i, tracks[i].name);
+        sprintf(filename, "%s/%04d_%s.ADS",input_folder, i, tracks[i].name);
         FILE *in = fopen(filename, "rb");
         if(!in)
         {
-            printf("Error: Could not open %s for reading\n", filename);
-            continue;
+            sprintf(filename, "%s/%04d_%s.VAG",input_folder, i, tracks[i].name);
+            in = fopen(filename, "rb");
+            if(!in)
+            {
+                printf("Error: Could not open %s for reading\n", tracks[i].name);
+                continue;
+            }else{
+                is_vagi = 1;
+            }
         }
 
+        uint32_t file_size;
         fseek(in, 0, SEEK_END);
-        uint32_t bgm_size = ftell(in);
+        file_size = ftell(in);
         fseek(in, 0, SEEK_SET);
 
+        ADS ads;
+        VAGp vagi;
+
+        uint32_t adpcm_size, sample_rate, interleave, header_size;
+
+        if(is_vagi)
+        {
+            fread(&vagi, sizeof(VAGp), 1, in);
+            adpcm_size = vagi.size;
+            sample_rate = swap_uint32(vagi.sample_rate);
+            interleave = vagi.interleave;
+            header_size = sizeof(VAGp);
+        }
+        else
+        {
+            fread(&ads, sizeof(ADS), 1, in);
+            adpcm_size = ads.adpcm_size;
+            sample_rate = ads.sample_rate;
+            interleave = ads.interleave;
+            header_size = sizeof(ADS);
+        }
         char header_check[16];
         fread(header_check, 1, 16, in);
         if(memcmp(header_check, BD, 16) != 0)
         {
-            //add header data, MFAudio generates raw files without it
+            //add header spacing if missing
             fwrite(BD, 1, 16, new_bd_file);
-            bgm_size += 16;
+            add_header = 16;
         }
-        fseek(in, 0, SEEK_SET);
+        
+        fseek(in, header_size, SEEK_SET);
 
-        uint32_t block_size = 0x1000;
-
-        uint32_t padded_size = (1 + (bgm_size / block_size)) * block_size; 
+        file_size -= sizeof(header_size);
+        uint32_t padded_size = file_size + interleave - (file_size % interleave);
 
         char *data = calloc(padded_size, 1);
-        fread(data, 1, bgm_size, in);
+        fread(data, 1, file_size, in);
         fwrite(data, 1, padded_size, new_bd_file);
         fseek(info_file, 0x10 + i * sizeof(music_track), SEEK_SET);
-        fseek(info_file, 8, SEEK_CUR);
-        fwrite(&bgm_size, 4, 1, info_file);
+        fseek(info_file, 4, SEEK_CUR);
+
+        fwrite(&sample_rate, 4, 1, info_file);
+
+        adpcm_size = adpcm_size + add_header;
+        padded_size = padded_size + add_header;
+
+        fwrite(&adpcm_size, 4, 1, info_file);
         fwrite(&padded_size, 4, 1, info_file);
         free(data);
         fclose(in);
@@ -210,15 +251,26 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
     printf("Done\n");
 }
 
-void list_music(const char *music_info)
+void list_music(const char *music_info, const char *music_bd, const char *out_log)
 {
     music_track *tracks;
     uint32_t num_tracks; // @ 0x08 in music_info
+    FILE *log_file;
     FILE *info_file = fopen(music_info, "rb");
     if(!info_file)
     {
         printf("Error: Could not open %s\n", music_info);
         return;
+    }
+
+    if(out_log != NULL)
+    {
+        log_file = fopen(out_log, "w");
+        if(!log_file)
+        {
+            printf("Error: Could not open %s for writing\n", out_log);
+            return;
+        }
     }
 
     fseek(info_file, 0x08, SEEK_SET);
@@ -229,13 +281,43 @@ void list_music(const char *music_info)
     fclose(info_file);
     printf("Found %d tracks\n", num_tracks);
 
+    FILE *bd_file = fopen(music_bd, "rb");
+    if(!bd_file)
+    {
+        printf("Error: Could not open %s\n", music_bd);
+        return;
+    }
+
+    fseek(bd_file, 0x0, SEEK_SET);
 
     for(int i = 0; i < num_tracks; i++)
-    {
+    {   
+        char *data = malloc(tracks[i].padded_size);
+        fread(data, 1, tracks[i].padded_size, bd_file);
         printf("%04d: %s\n", i, tracks[i].name);
+        if(out_log != NULL)
+        {
+            fprintf(log_file, "%04d: %s\n", i, tracks[i].name);
+            fprintf(log_file, "\tStereo: %s\n", tracks[i].stereo ? "Yes" : "No");
+            fprintf(log_file, "\tSample Rate: %d Hz\n", tracks[i].sample_rate);
+            fprintf(log_file, "\tADPCM Size: %#08x bytes\n", tracks[i].track_size);
+            fprintf(log_file, "\tPadded Size: %#08x bytes\n", tracks[i].padded_size);
+            fprintf(log_file, "\tInterleave: %#08x bytes\n", get_interleave(data, tracks[i].padded_size));
+        }else{
+            printf("\tStereo: %s\n", tracks[i].stereo ? "Yes" : "No");
+            printf("\tSample Rate: %d Hz\n", tracks[i].sample_rate);
+            printf("\tADPCM Size: %#08x bytes\n", tracks[i].track_size);
+            printf("\tPadded Size: %#08x bytes\n", tracks[i].padded_size);
+            printf("\tInterleave: %#08x bytes\n", get_interleave(data, tracks[i].padded_size));
+        }
+        free(data);
     }
 
     free(tracks);
+    fclose(bd_file);
+    if(out_log != NULL) fclose(log_file);
+    if(out_log != NULL) printf("Log written to %s\n", out_log);
+    fclose(info_file);
 
     printf("Done\n");
-}
+} 

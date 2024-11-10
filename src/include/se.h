@@ -235,18 +235,29 @@ void import_sounds(const char *hd_info, const char *bd_data, const char *input_f
     printf("Done\n");
 }
 
-void list_sounds(const char *hd_info)
+void list_sounds(const char *hd_info, const char *out_log)
 {
     SCEIVers vers;
     SCEIHead head;
     SCEIVagi vagi;
     SCEIVagiData *vagi_data;
 
+    FILE *log_file;
     FILE *hd_file = fopen(hd_info, "rb");
     if(!hd_file)
     {
         printf("Error: Could not open %s\n", hd_info);
         return;
+    }
+
+    if(out_log != NULL)
+    {
+        log_file = fopen(out_log, "w");
+        if(!log_file)
+        {
+            printf("Error: Could not open %s for writing\n", out_log);
+            return;
+        }
     }
 
     fread(&vers, sizeof(SCEIVers), 1, hd_file);
@@ -274,9 +285,19 @@ void list_sounds(const char *hd_info)
     for(int i = 0; i <= vagi.data_count; i++)
     {
         printf("%04d: %dHz Sample Rate, %s\n", i, vagi_data[i].sample_rate, vagi_data[i].looping ? "looping" : "");
+        if(out_log != NULL)
+        {
+            fprintf(log_file, "%04d:\n", i);
+            fprintf(log_file, "\tSample Rate: %d Hz\n", vagi_data[i].sample_rate);
+            fprintf(log_file, "\tStart Offset: %#08x\n", vagi_data[i].start_offset);
+            fprintf(log_file, "\t%s\n", vagi_data[i].looping ? "Looping" : "Not Looping");
+
+        }
     }
 
     fclose(hd_file);
+    if(out_log != NULL) fclose(log_file);
+    if(out_log != NULL) printf("Log written to %s\n", out_log);
     free(vagi_data);
     free(vagi_offsets);
 }

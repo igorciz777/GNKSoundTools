@@ -5,9 +5,9 @@
 #include <sys/stat.h>
 
 typedef struct{
-    uint32_t type; //?
+    uint32_t stereo;
     uint32_t sample_rate;
-    uint32_t track_size;
+    uint32_t track_size; //cant tell if used at all
     uint32_t padded_size;
     char name[0x40];
 } music_track;
@@ -77,6 +77,9 @@ static const unsigned char SSbd_HEADER[] = { //used in ADS
 static const unsigned char VAGp_HEADER[] = { //VAGp mono header
     0x56, 0x41, 0x47, 0x70, 0x00, 0x00, 0x00, 0x20
 };
+static const unsigned char VAGi_HEADER[] = { //VAGp mono header
+    0x56, 0x41, 0x47, 0x69, 0x00, 0x00, 0x00, 0x20
+};
 static const unsigned char BD[16] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
@@ -101,7 +104,7 @@ void write_ads_header(FILE *out, uint32_t sample_rate, uint32_t size, uint32_t i
     ads.interleave = interleave;
     ads.ff_footer = 0xffffffffffffffff;
     ads.ssbd_header = *(uint32_t *)SSbd_HEADER;
-    ads.adpcm_size = swap_uint32(size);
+    ads.adpcm_size = size;
     fwrite(&ads, sizeof(ADS), 1, out);
 }
 
