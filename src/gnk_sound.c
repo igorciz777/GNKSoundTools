@@ -9,7 +9,7 @@ void usage(const char *progname)
     printf("  Modes:\n\n");
     printf("  BGM:\n");
     printf("    -ml <bgm info file> <bgm .bd file> <optional: out.txt>  : Lists all music file info\n");
-    printf("    -mv <bgm info file> <bgm .bd file> <output folder>      : Extracts all music into ADS(PSF2) format\n");
+    printf("    -mv <bgm info file> <bgm .bd file> <output folder>      : Extracts all music into ADS (SPU2) format\n");
     printf("    -mi <bgm info file> <bgm .bd file> <input folder>       : Imports ADS/VAGi files into the music .bd file\n");
     printf("\n");
     printf("  Sound Effects:\n");

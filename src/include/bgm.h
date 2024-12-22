@@ -162,7 +162,6 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
         printf("Importing %s\n", tracks[i].name);
 
         int is_vagi = 0;
-        int add_header = 0;
 
         char *filename = malloc(strlen(input_folder) + strlen(tracks[i].name) + 12);
         sprintf(filename, "%s/%04d_%s.ADS",input_folder, i, tracks[i].name);
@@ -188,24 +187,30 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
         ADS ads;
         VAGp vagi;
 
-        uint32_t adpcm_size, sample_rate, interleave, header_size;
+        uint32_t sample_size, sample_rate, interleave, header_size;//, bitrate, duration, bit_duration, channels;
 
         if(is_vagi)
         {
             fread(&vagi, sizeof(VAGp), 1, in);
-            adpcm_size = vagi.size;
+            sample_size = vagi.size;
             sample_rate = swap_uint32(vagi.sample_rate);
             interleave = vagi.interleave;
             header_size = sizeof(VAGp);
+            //channels = vagi.channels;
         }
         else
         {
             fread(&ads, sizeof(ADS), 1, in);
-            adpcm_size = ads.adpcm_size;
+            sample_size = ads.sample_size;
             sample_rate = ads.sample_rate;
             interleave = ads.interleave;
             header_size = sizeof(ADS);
+            //channels = ads.channels;
         }
+        /*
+        bitrate = ((sample_rate << 5) / 0x38) * channels;
+        duration = ((sample_size >> 5) * 0x38) / channels;
+        
         char header_check[16];
         fread(header_check, 1, 16, in);
         if(memcmp(header_check, BD, 16) != 0)
@@ -213,12 +218,19 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
             //add header spacing if missing
             fwrite(BD, 1, 16, new_bd_file);
             add_header = 16;
-        }
+        }*/
         
         fseek(in, header_size, SEEK_SET);
 
-        file_size -= sizeof(header_size);
-        uint32_t padded_size = file_size + interleave - (file_size % interleave);
+        //file_size -= sizeof(header_size);
+        uint32_t padded_size;
+
+        if(sample_size % interleave * (0x38 / 0x10) == 0)
+        {
+            padded_size = sample_size;
+        }else{
+            padded_size = sample_size + (interleave - (sample_size % interleave * (0x38 / 0x10)));
+        }
 
         char *data = calloc(padded_size, 1);
         fread(data, 1, file_size, in);
@@ -227,11 +239,7 @@ void import_music(const char *music_info, const char *music_bd, const char *inpu
         fseek(info_file, 4, SEEK_CUR);
 
         fwrite(&sample_rate, 4, 1, info_file);
-
-        adpcm_size = adpcm_size + add_header;
-        padded_size = padded_size + add_header;
-
-        fwrite(&adpcm_size, 4, 1, info_file);
+        fwrite(&sample_size, 4, 1, info_file);
         fwrite(&padded_size, 4, 1, info_file);
         free(data);
         fclose(in);
@@ -255,6 +263,7 @@ void list_music(const char *music_info, const char *music_bd, const char *out_lo
 {
     music_track *tracks;
     uint32_t num_tracks; // @ 0x08 in music_info
+    uint32_t bitrate, duration;
     FILE *log_file;
     FILE *info_file = fopen(music_info, "rb");
     if(!info_file)
@@ -294,21 +303,33 @@ void list_music(const char *music_info, const char *music_bd, const char *out_lo
     {   
         char *data = malloc(tracks[i].padded_size);
         fread(data, 1, tracks[i].padded_size, bd_file);
-        printf("%04d: %s\n", i, tracks[i].name);
+        printf("%04d_%s\n", i, tracks[i].name);
+        if(tracks[i].stereo)
+        {
+            bitrate = ((tracks[i].sample_rate << 5) / 0x38) * 0x2;
+            duration = ((tracks[i].padded_size >> 5) * 0x38) / 0x2;
+        }else{
+            bitrate = ((tracks[i].sample_rate << 5) / 0x38);
+            duration = ((tracks[i].padded_size >> 5) * 0x38);
+        }
         if(out_log != NULL)
         {
-            fprintf(log_file, "%04d: %s\n", i, tracks[i].name);
+            fprintf(log_file, "%04d_%s\n", i, tracks[i].name);
             fprintf(log_file, "\tStereo: %s\n", tracks[i].stereo ? "Yes" : "No");
             fprintf(log_file, "\tSample Rate: %d Hz\n", tracks[i].sample_rate);
-            fprintf(log_file, "\tADPCM Size: %#08x bytes\n", tracks[i].track_size);
             fprintf(log_file, "\tPadded Size: %#08x bytes\n", tracks[i].padded_size);
             fprintf(log_file, "\tInterleave: %#08x bytes\n", get_interleave(data, tracks[i].padded_size));
+            fprintf(log_file, "\tBit rate: %d byte/sec\n", bitrate);
+            fprintf(log_file, "\tDuration: %f sec\n", (double)duration / tracks[i].sample_rate);
+            //fprintf(log_file, "\tDuration * bit rate: %#08x bytes\n", tracks[i].track_size);
         }else{
             printf("\tStereo: %s\n", tracks[i].stereo ? "Yes" : "No");
             printf("\tSample Rate: %d Hz\n", tracks[i].sample_rate);
-            printf("\tADPCM Size: %#08x bytes\n", tracks[i].track_size);
-            printf("\tPadded Size: %#08x bytes\n", tracks[i].padded_size);
+            printf("\tSample Size: %#08x bytes\n", tracks[i].padded_size);
             printf("\tInterleave: %#08x bytes\n", get_interleave(data, tracks[i].padded_size));
+            printf("\tBit rate: %d byte/sec\n", bitrate);
+            printf("\tDuration: %f sec\n", (double)duration / tracks[i].sample_rate);
+            //printf("\tDuration * bit rate: %#08x bytes\n", tracks[i].track_size);
         }
         free(data);
     }

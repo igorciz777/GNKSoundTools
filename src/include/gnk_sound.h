@@ -35,7 +35,7 @@ typedef struct{
 
     //ssbd
     uint32_t ssbd_header;
-    uint32_t adpcm_size;
+    uint32_t sample_size;
 } ADS;
 
 typedef struct{
@@ -104,7 +104,7 @@ void write_ads_header(FILE *out, uint32_t sample_rate, uint32_t size, uint32_t i
     ads.interleave = interleave;
     ads.ff_footer = 0xffffffffffffffff;
     ads.ssbd_header = *(uint32_t *)SSbd_HEADER;
-    ads.adpcm_size = size;
+    ads.sample_size = size;
     fwrite(&ads, sizeof(ADS), 1, out);
 }
 
