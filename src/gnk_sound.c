@@ -11,6 +11,7 @@ void usage(const char *progname)
     printf("    -ml <bgm info file> <bgm .bd file> <optional: out.txt>  : Lists all music file info\n");
     printf("    -mv <bgm info file> <bgm .bd file> <output folder>      : Extracts all music into ADS (SPU2) format\n");
     printf("    -mi <bgm info file> <bgm .bd file> <input folder>       : Imports ADS/VAGi files into the music .bd file\n");
+    printf("    -lv <MUSIC.SMH> <MUSIC.SMC> <output folder>             : Extracts all music from older games (pre-TXR3)\n");
     printf("\n");
     printf("  Sound Effects:\n");
     printf("    -sl <hd info file> <optional: out.txt>                  : Lists all sound effects info\n");
@@ -74,6 +75,11 @@ int main(int argc, char const *argv[])
                     usage(argv[0]);
                     return 1;
             }
+            break;
+        case 'l':
+            if(argc < 5){usage(argv[0]);return 1;}
+            if(strcmp(argv[1], "-lv") == 0)
+                extract_music_old(argv[2], argv[3], argv[4]);
             break;
         default:
             usage(argv[0]);

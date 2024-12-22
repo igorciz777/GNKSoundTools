@@ -13,6 +13,14 @@ typedef struct{
 } music_track;
 
 typedef struct{
+    uint32_t start_offset;
+    uint32_t sample_size;
+    uint32_t sample_rate;
+    uint16_t frame_size;
+    uint16_t channels;
+} smh_track;
+
+typedef struct{
     uint32_t header;
     uint32_t version;
     uint32_t interleave;

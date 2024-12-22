@@ -75,6 +75,71 @@ void extract_music(const char *music_info, const char *music_bd, const char *out
     printf("Done\n");
 }
 
+void extract_music_old(const char *music_smh, const char *music_smc, const char *output_folder)
+{
+    smh_track *tracks;
+    uint32_t num_tracks; // @ 0x08 in music_info
+    uint32_t interleave;
+    FILE *info_file = fopen(music_smh, "rb");
+    if(!info_file)
+    {
+        printf("Error: Could not open %s\n", music_smh);
+        return;
+    }
+
+#ifdef _WIN32
+    mkdir(output_folder);
+#else
+    mkdir(output_folder, 0700);
+#endif
+
+    printf("Extracting music from %s\n", music_smc);
+    fread(&num_tracks, 4, 1, info_file);
+    fread(&interleave, 4, 1, info_file);
+    tracks = malloc(num_tracks * sizeof(smh_track));
+
+    fseek(info_file, 0x10, SEEK_SET);
+
+    for(int i = 0; i < num_tracks; i++)
+    {
+        fread(&tracks[i], sizeof(smh_track), 1, info_file);
+    }
+    fclose(info_file);
+
+    FILE *bd_file = fopen(music_smc, "rb");
+    if(!bd_file)
+    {
+        printf("Error: Could not open %s\n", music_smc);
+        return;
+    }
+
+    fseek(bd_file, 0x0, SEEK_SET);
+
+    for(int i = 0; i < num_tracks; i++)
+    {
+        char *filename = malloc(strlen(output_folder) + 12);
+        sprintf(filename, "%s/%04d.%s",output_folder, i, "ADS");
+        FILE *out = fopen(filename, "wb");
+        if(!out)
+        {
+            printf("Error: Could not open %s for writing\n", filename);
+            continue;
+        }
+
+        char *data = malloc(tracks[i].sample_size);
+        fread(data, 1, tracks[i].sample_size, bd_file);
+        write_ads_header(out, tracks[i].sample_rate, tracks[i].sample_size, interleave, 2);
+        fwrite(data, 1, tracks[i].sample_size, out);
+        fclose(out);
+        free(data);
+    }
+
+    fclose(bd_file);
+    free(tracks);
+
+    printf("Done\n");
+}
+
 void import_music(const char *music_info, const char *music_bd, const char *input_folder)
 {
     music_track *tracks;

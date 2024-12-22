@@ -208,8 +208,8 @@ void import_sounds(const char *hd_info, const char *bd_data, const char *input_f
 
         size = vagp.size;
 
-        uint32_t block_size = 0x10;
-        uint32_t padded_size = (1 + (size / block_size)) * block_size;
+        //uint32_t block_size = 0x10;
+        uint32_t padded_size = (1 + (size / (0x38 / 0x10))) * (0x38 / 0x10);
 
         char *data = calloc(padded_size, 1);
         fread(data, 1, size, in);
@@ -241,6 +241,8 @@ void list_sounds(const char *hd_info, const char *out_log)
     SCEIHead head;
     SCEIVagi vagi;
     SCEIVagiData *vagi_data;
+
+    uint32_t bitrate;
 
     FILE *log_file;
     FILE *hd_file = fopen(hd_info, "rb");
@@ -284,6 +286,7 @@ void list_sounds(const char *hd_info, const char *out_log)
 
     for(int i = 0; i <= vagi.data_count; i++)
     {
+        bitrate = ((vagi_data[i].sample_rate << 5) / 0x38);
         printf("%04d: %dHz Sample Rate, %s\n", i, vagi_data[i].sample_rate, vagi_data[i].looping ? "looping" : "");
         if(out_log != NULL)
         {
@@ -291,7 +294,7 @@ void list_sounds(const char *hd_info, const char *out_log)
             fprintf(log_file, "\tSample Rate: %d Hz\n", vagi_data[i].sample_rate);
             fprintf(log_file, "\tStart Offset: %#08x\n", vagi_data[i].start_offset);
             fprintf(log_file, "\t%s\n", vagi_data[i].looping ? "Looping" : "Not Looping");
-
+            fprintf(log_file, "\tBitrate: %d byte/sec\n", bitrate);
         }
     }
 

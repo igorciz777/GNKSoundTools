@@ -13,6 +13,8 @@ gnk_sound [mode]
       -ml <bgm info file> <bgm .bd file> <optional: out.txt>  : Lists all music file info
       -mv <bgm info file> <bgm .bd file> <output folder>      : Extracts all music into ADS (SPU2) format
       -mi <bgm info file> <bgm .bd file> <input folder>       : Imports ADS/VAGi files into the music .bd file
+      -lv <MUSIC.SMH> <MUSIC.SMC> <output folder>             : Extracts all music from older games (pre-TXR3)
+
 
     Sound Effects:
       -sl <hd info file> <optional: out.txt>                  : Lists all sound effects info
